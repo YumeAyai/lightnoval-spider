@@ -1,0 +1,110 @@
+import urllib.request as ur
+import time
+NONE=[]
+def url_open(url):
+    time.sleep(0.1)
+    req = ur.Request(url)
+    req.add_header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                                 "Chrome/80.0.3987.116 Safari/537.36")
+
+    response = ur.urlopen(req)
+    html = response.read()
+
+    return html
+
+
+def find_title(html):
+    titleStart = html.find("novel_subtitle")
+    titleEnd = html.find("</p>", titleStart, titleStart + 255)
+    title = html[titleStart + 16 : titleEnd]
+    return title
+
+def find_chapter(html):
+    chapterStart = html.find("chapter_title")
+    chapterEnd = html.find("</p>", chapterStart, chapterStart + 255)
+    chapter = html[chapterStart + 15 : chapterEnd]
+    return chapter
+
+
+def find_before(html):
+    before = []
+    start=end=0
+    start = html.find('<p id="Lp', 0, -1)
+    end = html.find("</div>", start, -1)
+    if len(html[start:end]) == 0:
+        return NONE
+
+    lineStart = html.find('">', start, end)
+    while lineStart < end:
+        lineEnd = html.find("</p>", lineStart, -1)
+        if lineEnd < end:
+            before.append(html[lineStart + 2: lineEnd])        
+        else:
+            break
+        lineStart = html.find('">', lineEnd+ 3, -1)
+    return before
+
+
+def find_content(html):
+    content = []+['---']
+    start=end=0
+    start = html.find('<p id="Lp', 0, -1)
+    end = html.find("</div>", start, -1)
+    start = html.find('<p id="L', end, -1)
+    end = html.find("</div>", start, -1)
+    if len(html[start:end]) == 0:
+        return NONE
+
+    lineStart = html.find('">', start, end)
+    while lineStart < end:
+        lineEnd = html.find("</p>", lineStart, -1)
+        if lineEnd < end:
+            content.append(html[lineStart + 2: lineEnd])        
+        else:
+            break
+        lineStart = html.find('">', lineEnd + 3, -1)
+    return content
+
+
+def find_after(html):
+    content = []+['---']
+    start=end=0
+    start = html.find('<p id="La', 0, -1)
+    end = html.find("</div>", start, -1)
+    if len(html[start:end]) == 0:
+        return NONE
+   
+    lineStart = html.find('">', start, end)
+    while lineStart < end:
+        lineEnd = html.find("</p>", lineStart, -1)
+        if lineEnd < end:
+            content.append(html[lineStart + 2: lineEnd])           
+        else:
+            break
+        lineStart = html.find('">', lineEnd + 3, -1)
+    return content
+
+def save_file(file_name, title, content_list):
+    f = open(file_name, "a+", encoding="UTF-8")
+    f.write(title + "\n\n")
+    for content in content_list:
+        f.write(content+'\n')
+    f.close()
+
+
+urlNum=232
+if __name__ == "__main__":
+    # html = url_open("https://ncode.syosetu.com/n3862be/{}.html").decode("gbk")
+    while urlNum != 408:# end of noval url number
+        urlNum = urlNum +1
+        html = url_open("https://ncode.syosetu.com/n3862be/{}.html". format(urlNum)). decode("utf-8")
+        print('url:','{}'. format(urlNum))
+        chapter = find_chapter(html)
+        print(chapter)
+        title = find_title(html)
+        print(title)
+        contents = find_before(html)+["***"]+find_content(html)+["***"]+find_after(html)
+        # save
+        save_file("{}.md". format(chapter+" "+title), title, contents)
+        print("save")
+        
